@@ -1,9 +1,145 @@
-\section{Meow}
+\section{Designing Filter Taps}
 
-\begin{figure}[H]
-	\begin{center}
-		% \includegraphics[scale=0.8]{}
-        \textbf{Meow}
-        \caption{Meow}
-	\end{center}
-\end{figure}
+Демонстрирует, как создать список или массив коэффициентов фильтра и применить их в блоке низкочастотной фильтрации.
+
+\subsection{Проектирование коэффициентов фильтра}
+
+Начнем с блок-схемы из примера низкочастотного фильтра, но заменим низкочастотный фильтр на частотно-смещенный FIR фильтр и добавим блок Low-Pass Filter Taps:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{1}
+\end{center}
+
+Блок Low-Pass Filter Taps задает набор коэффициентов фильтра, которые можно применять к блокам фильтрации. Коэффициенты фильтра также могут называться весами или коэффициентами. Ответ и производительность фильтра зависят от параметров, введенных пользователем. Дважды щелкнем по блоку Low-Pass Filter Taps, чтобы открыть свойства. Отредактируем их:
+
+\begin{itemize}
+    \item Id: \verb|lowPassFilterTaps|
+    \item Cutoff Freq (Hz): \verb|samp_rate/4|
+    \item Transition Width (Hz): \verb|samp_rate/8|
+\end{itemize}
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{2}
+\end{center}
+
+Блок Low-Pass Filter Taps сохраняет коэффициенты фильтра в список в переменной lowPassFilterTaps.
+
+Дважды щелкнем по блоку частотно-смещенного FIR фильтра, чтобы отредактировать свойства. Введем \verb|lowPassFilterTaps| для параметра Taps. Наведение курсора на переменную lowPassFilterTaps отображает информацию о коэффициентах фильтра:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{3}
+\end{center}
+
+Первые несколько коэффициентов фильтра отображаются в списке. Сохраним свойства и запустим flowgraph:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{4}
+\end{center}
+
+Попробуем поизменять частоту. Амплитуда частотной характеристики затем может быть видна через контур:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{5}
+\end{center}
+
+\subsection{Ввод коэффициентов фильтра вручную}
+
+Альтернативные методы могут использоваться для задания коэффициентов фильтра, а затем ввода их вручную в виде переменной в Python. Например, блок частотно-смещенного FIR фильтра принимает коэффициенты фильтра в виде массива NumPy. Добавим блок Import в рабочее пространство GRC:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{6}
+\end{center}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{7}
+\end{center}
+
+Простой фильтр скользящего среднего или \verb|boxcar| можно задать, установив все коэффициенты фильтра одинаковыми. Это можно сделать с помощью функции NumPy ones(), которая возвращает массив NumPy, состоящий из единиц указанной длины. Создадим переменную с именем boxcarFilter со значением:
+
+\begin{verbatim}
+boxcarFilter = np.ones(10)
+\end{verbatim}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{8}
+\end{center}
+
+Отключим Low-Pass Filter Taps и заменим его на \verb|boxcarFilter| в Frequency Xlating FIR Filter. Блок-схема выглядит следующим образом:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{9}
+\end{center}
+
+Теперь можно увидеть другую амплитуду частотной характеристики, поскольку используются разные коэффициенты фильтра:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{10}
+\end{center}
+
+\subsection{Фильтр от реального к комплексному}
+
+Многие блоки фильтрации имеют опции выбора комбинаций реальных или комплексных типов данных для входа и выхода, а также реальных или комплексных весов фильтра. Этот пример демонстрирует один из методов использования комплексных весов фильтра для преобразования реального сигнала в комплексный. Удалим переменную \verb|boxcarFilter| и снова включим блок Low-Pass Filter Taps:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{11}
+\end{center}
+
+\verb|lowPassFilterTaps| используются как основа для комплексного полосового фильтра. Создадим переменную \verb|n| со значением:
+
+\begin{verbatim}
+np.arange(0,len(lowPassFilterTaps))
+\end{verbatim}
+
+которая образует массив целых чисел: 0, 1, 2, 3, ... до длины \verb|lowPassFilterTaps|:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{12}
+\end{center}
+
+Создадим переменную \verb|frequencyShift| со значением:
+
+\begin{verbatim}
+np.exp(1j * 2 * np.pi * 0.25 * n)
+\end{verbatim}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{13}
+\end{center}
+
+Эта функция является комплексной синусоидой с частотой \(1/4\) частоты дискретизации. Переменная \verb|frequencyShift| изменяет центральную частоту \verb|lowPassFilterTaps| с \(0\) до \(1/4\) частоты дискретизации. Создадим переменную \verb|bandPassTaps| со значением:
+
+\begin{verbatim}
+lowPassFilterTaps * frequencyShift
+\end{verbatim}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{14}
+\end{center}
+
+Отредактируем блок Frequency Xlating FIR Filter. В качестве типа выберем Float->Complex(Complex Taps):
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{15}
+\end{center}
+
+Заменим lowPassFilterTaps на bandPassTaps в частотно-смещенном фильтре.
+
+Отредактируем свойства источника сигнала и преобразуем его в реальный сигнал.
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{16}
+\end{center}
+
+Блок-схема выглядит следующим образом:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{17}
+\end{center}
+
+Запустим блок-схему.
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{18}
+\end{center}
+
+Амплитуда частотной характеристики показывает, что центральная частота низкочастотного фильтра была смещена до 1/4 частоты дискретизации, что теперь является полосовым фильтром. Частотная характеристика теперь отличается между положительными и отрицательными частотами, что может быть свойством комплексных фильтров (но не реальных фильтров).
